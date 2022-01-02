@@ -111,6 +111,14 @@ st.sidebar.markdown('''
   - [Séjours : Déclinaison par catégorie majeure de diagnostic, taux de progression 2018/2019 et 2019/2020](#s-jours-d-clinaison-par-cat-gorie-majeure-de-diagnostic-taux-de-progression-2018-2019-et-2019-2020)
 ''', unsafe_allow_html=True)
 
+st.sidebar.markdown('''
+***
+##### Code source
+[https://github.com/gegedenice/covid-nodramadata](https://github.com/gegedenice/covid-nodramadata)
+##### Licence
+MIT Licence
+''')
+
 #main section 1
 st.title('Données Covid')
 #section 1.1
@@ -303,7 +311,7 @@ with st.container():
             grid1x2(x)
 
 #section 2.2
-st.header("Fiche nationale toutes activités, champ MCO")
+st.header("Fiche nationale toutes activités, champ MCO (Médecine-Chirurgie-Obstétrique)")
 with st.expander("Cliquer pour développer - Source des données : https://www.scansante.fr/"):
     st.write("""
         **Les données hospitalières**

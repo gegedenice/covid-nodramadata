@@ -14,6 +14,7 @@ L'application est déployée et accessible sur le PaaS Heroku
 Comme pour toute application Python il est recommandé de créer un environnement virtuel sous lequel installer les packages nécessaires.
 
 ```
+git clone https://github.com/gegedenice/covid-nodramadata.git
 virtualenv YOUR_VENV_NAME
 cd YOUR_VENV_NAME/Scripts && activate (Windows)
 source YOUR_VENV_NAME/bin/activate (Linux)
