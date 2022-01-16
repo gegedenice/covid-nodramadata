@@ -7,8 +7,9 @@ import pandas as pd
 import plotly.express as px
 import load_functions as fn
 import utils_functions as utils
-import ssl
 
+#temporaire certif ssl HS
+import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 
 st.set_page_config(layout="wide")
@@ -135,7 +136,7 @@ MIT Licence
 #main section 1
 st.title('Données Covid')
 #section 1.1
-st.header("Chiffres-clés par date et selon le statut vaccinal (2ème semestre 2021)")
+st.header("Chiffres-clés par date et selon le statut vaccinal (à partir du 2ème semestre 2021)")
 with st.expander("Cliquer pour développer et voir les données - Source des données : Data.drees.solidarites-sante.gouv.fr - "):
      st.write("""
          **Données statistiques publiques en santé et social**
