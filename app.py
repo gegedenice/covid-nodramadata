@@ -7,6 +7,9 @@ import pandas as pd
 import plotly.express as px
 import load_functions as fn
 import utils_functions as utils
+import ssl
+
+ssl._create_default_https_context = ssl._create_unverified_context
 
 st.set_page_config(layout="wide")
 st.write('<style>div.row-widget.stRadio > div{flex-direction:row;} </style>', unsafe_allow_html=True)
@@ -22,6 +25,10 @@ dict_vac_statut = {'Primo dose récente': 'Primo dose',
                    'Complet de 6 mois et plus - sans rappel': '2 doses sans rappel',
                    'Complet de 6 mois et plus - avec rappel': '3 doses',
                    'Non-vaccinés': 'Non-vaccinés'}
+dict_vac_statut_new_colors = {'Non-vaccinés': 'rgb(44, 160, 44)', #green
+          '3 doses': 'rgb(255, 127, 14)', #orange
+          '2 doses sans rappel': 'rgb(31, 119, 180)', #blue
+          'Primo dose': 'rgb(214, 39, 40)'} #red
 dict_ageclasse = {9: "[0-9]", 19: "[10-19]", 29: "[20-29]", 39: "[30-39]", 49: "[40-49]", 59: "[50-59]", 69: "[60-69]", 79: "[70-79]", 89: "[80-89]", 90: "[90-...]"}
 dict_ageclasse_group = {9: "[0-29]", 19: "[0-29]", 29: "[0-29]", 39: "[30-59]", 49: "[30-59]", 59: "[30-59]", 69: "[60-79]", 79: "[60-79]", 89: "[80-...]", 90: "[80-...]"} 
 dict_regions = {1: 'GUADELOUPE',2: 'MARTINIQUE',3: 'GUYANNE',4: 'LA RÉUNION',6: 'MAYOTTE',
@@ -40,7 +47,12 @@ dict_select_month = {"Décembre":"-12-",
                      "Septembre":"-09-",
                      "Août":"-08-",
                      "Juillet": "-07-",
-                     "Juin": "-06-"}
+                     "Juin": "-06-",
+                     "Mai": "-05-",
+                     "Avril": "-04-",
+                     "Mars": "-03-",
+                     "Février": "-02-",
+                     "Janvier": "-01-"}
 
 ###-----DATA PROCESSING FUNCTIONS---###
 def prepare_covidappa_data(data):
@@ -48,6 +60,7 @@ def prepare_covidappa_data(data):
     df = df.drop(['datasetid','record_timestamp','recordid'], axis=1)
     df.columns = [x.replace('fields.', '') for x in df.columns if 'fields' in x]
     df["vac_statut_new"] = df["vac_statut"].map(dict_vac_statut)
+    df["annee"] = df['date'].apply(lambda x: x.partition("-")[0])
     df = utils.calcul_rate(df,'positive_rate','nb_pcr','nb_pcr0')
     return df
 
@@ -76,7 +89,7 @@ LOCALDATA_SCANSANTE_PATIENTS_SEJOURS_AGES = 'scansante_sejours_regions_ages_2018
 LOCALDATA_SCANSANTE_CMD = 'scansante_activite_cmd_2018_2020'
 
 ###-----DATAFRAMES---###
-df_covidappa = fn.chain(fn.load_json_data(DATADREES_DATA_API,DATASET_COVIDAPPA,2000), prepare_covidappa_data).convert_dtypes()
+df_covidappa = fn.chain(fn.load_json_data(DATADREES_DATA_API,DATASET_COVIDAPPA,3000), prepare_covidappa_data).convert_dtypes()
 df_covidhebdo = fn.chain(fn.load_csv_data(DATAGOUV_DATA_API,DATASET_COVIDHEBDO), prepare_covidhebdo_data).convert_dtypes()
 df_local_scansante = fn.load_excel_data(LOCALDATA_SCANSANTE_PATIENTS_SEJOURS)
 df_local_scansante_age = fn.load_excel_data(LOCALDATA_SCANSANTE_PATIENTS_SEJOURS_AGES)
@@ -130,6 +143,10 @@ with st.expander("Cliquer pour développer et voir les données - Source des don
          * url du jeu de données : [https://data.drees.solidarites-sante.gouv.fr/explore/dataset/covid-19-resultats-issus-des-appariements-entre-si-vic-si-dep-et-vac-si/information/](https://data.drees.solidarites-sante.gouv.fr/explore/dataset/covid-19-resultats-issus-des-appariements-entre-si-vic-si-dep-et-vac-si/information/)
          * Méthodo commentée : [https://drees.solidarites-sante.gouv.fr/communique-de-presse/exploitation-des-appariements-entre-les-bases-si-vic-si-dep-et-vac-si-des](https://drees.solidarites-sante.gouv.fr/communique-de-presse/exploitation-des-appariements-entre-les-bases-si-vic-si-dep-et-vac-si-des)
         
+         **Collecte des données**
+
+         L'intégralité du dataset est récupéré en json par requête sur l'API (documentée [ici](https://data.drees.solidarites-sante.gouv.fr/explore/dataset/covid-19-resultats-issus-des-appariements-entre-si-vic-si-dep-et-vac-si/api/?disjunctive.vac_statut&sort=-date))
+         
          **Retraitements effectués**
          * Ajout d'une variable : regroupement des statuts vaccinaux en catégories plus larges Primo dose, 2 doses sans rappel, 3 doses, Non-vaccinés
          * Ajout d'une variable : taux de positivité (pourcentage des PCR positifs par rapport aux PCR effectués) calculé pour chque enregistrement
@@ -148,7 +165,7 @@ with st.container():
             fig111_bar = px.bar(df_covidappa, x='date', y=dict_radio_var[selected_var], color='vac_statut', template='xgridoff', labels={dict_radio_var[selected_var]: selected_var}, height=600)
         elif selected_vactype == "Statut vaccinal - regroupements de catégories":
             df_agg = df_covidappa.groupby(['date', 'vac_statut_new']).agg(data_sum=(dict_radio_var[selected_var], 'sum')).reset_index()
-            fig111_bar = px.bar(df_agg, x='date', y='data_sum', color='vac_statut_new', template='xgridoff', labels={'data_sum': selected_var}, height=600)
+            fig111_bar = px.bar(df_agg, x='date', y='data_sum', color='vac_statut_new',color_discrete_map=dict_vac_statut_new_colors, labels={'data_sum': selected_var}, height=600)
         fig111_bar.update_layout(legend_title_text=selected_vactype)
         fig111_bar.update_layout(legend=dict(
             yanchor="top",
@@ -160,9 +177,10 @@ with st.container():
         st.plotly_chart(fig111_bar,use_container_width=True)
     with col2:
         st.markdown('''##### Synthèse mensuelle''')
-        selected_month = st.selectbox("Sélectionner un mois de l'année 2021",dict_select_month.keys())
-        df_month = df_covidappa.loc[df_covidappa['date'].str.contains(dict_select_month[selected_month], case=False, regex=False, na=False)]
-        fig111_pie = px.pie(df_month, names='vac_statut_new', values=dict_radio_var[selected_var],height=400, template='xgridoff')
+        selected_year = st.selectbox("Sélectionner une année",["2021","2022"])
+        selected_month = st.selectbox("Sélectionner un mois de l'année",dict_select_month.keys())
+        df_month = df_covidappa.loc[(df_covidappa['date'].str.contains(dict_select_month[selected_month], case=False, regex=False, na=False)) & (df_covidappa['annee'] == selected_year)]
+        fig111_pie = px.pie(df_month, names='vac_statut_new', values=dict_radio_var[selected_var],color='vac_statut_new',color_discrete_map=dict_vac_statut_new_colors,height=400)
         #fig111_pie.update_layout(legend_title_text='Statut vaccinal - regroupements de catégories')
         fig111_pie.update_layout(legend=dict(orientation="h"))
         fig111_pie.update_layout(autosize=True)
@@ -187,11 +205,14 @@ with st.expander("Cliquer pour développer - Source des données : data.gouv.fr 
 
          * url d'accès aux jeux de données : [https://www.data.gouv.fr/fr/datasets/donnees-hospitalieres-relatives-a-lepidemie-de-covid-19/](https://www.data.gouv.fr/fr/datasets/donnees-hospitalieres-relatives-a-lepidemie-de-covid-19/)
          * Dataset : [donnees-hospitalieres-classe-age-hebdo-covid](https://www.data.gouv.fr/fr/datasets/r/dc7663c7-5da9-4765-a98b-ba4bc9de9079)
+         
+         **Collecte des données**
+         
+         L'intégralité du dataset est récupéré dynamiquement en csv par import à partir de son [url pérenne](https://www.data.gouv.fr/fr/datasets/r/dc7663c7-5da9-4765-a98b-ba4bc9de9079) 
 
          **Retraitements effectués**
-         * Compilation des nombres de séjours et nombre de patients des tableaux 2018, 2019, 2020 et 2021 en un seul dataset
-         * Compilation manuelle pour la période 2018-2020, données incrémentales dynamiques (en temps réel) pour 2021
-         * Ajout d'une variable : regroupement de classes d'âge en catégories plus larges [0-29], [30-59], [60-79], [80-...]
+ 
+         * Ajout d'une variable pour les totaux segmentés par classes d'âge : regroupement de classes d'âge en catégories plus larges [0-29], [30-59], [60-79], [80-...]
      """)
 #sub-section 1.2.1
 with st.container():
@@ -200,7 +221,7 @@ with st.container():
         st.dataframe(df_covidhebdo)
     st.caption("Période : données de mars 2020 à 2021 S-1")
     df_semaine = df_covidhebdo.groupby(['substr_semaine', 'subst_annee']).agg(NewAdmHospit_sum=('NewAdmHospit', 'sum')).reset_index()
-    fig121 = px.bar(df_semaine, x='substr_semaine', y='NewAdmHospit_sum', color='subst_annee', template='xgridoff')
+    fig121 = px.bar(df_semaine, x='substr_semaine', y='NewAdmHospit_sum', color='subst_annee', template='xgridoff',barmode='group')
     fig121.update_xaxes(title_text="semaines de l'année")
     fig121.update_yaxes(title_text='nouvelles hospitalisations')
     fig121.update_xaxes(categoryorder='category ascending')
@@ -210,7 +231,7 @@ with st.container():
 #sub-section 1.2.2
 with st.container():
     st.subheader("Nouvelles hospitalisations : totaux par régions, structure par classes d'âge")
-    st.caption("Période : données de mars 2020 à 2021 S-1, voir https://www.data.gouv.fr/fr/datasets/donnees-hospitalieres-relatives-a-lepidemie-de-covid-19 pour la dernière date de mise à jour des données 2021")
+    st.caption("Période : données de mars 2020 à 2021, voir https://www.data.gouv.fr/fr/datasets/donnees-hospitalieres-relatives-a-lepidemie-de-covid-19 pour la dernière date de mise à jour des données 2021")
     col1, col2 = st.columns(2)
     cols = {1: col1, 2: col2}
     years = {1: "2020", 2: "2021"}
